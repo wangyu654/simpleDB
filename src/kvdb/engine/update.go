@@ -1,7 +1,7 @@
 package engine
 
 func (t *Tree) Update(key uint64, val string) error {
-
+	t.rwMu.Lock()
 	var (
 		node *Node
 		err  error
@@ -19,6 +19,8 @@ func (t *Tree) Update(key uint64, val string) error {
 		return err
 	}
 
+	t.rwMu.Unlock()
+	defer t.NodeUnlock(node.Self)
 	for i, nkey := range node.Keys {
 		if nkey == key {
 			node.Records[i] = val

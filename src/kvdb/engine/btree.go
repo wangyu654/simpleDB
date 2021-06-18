@@ -20,13 +20,15 @@ const (
 type OFFTYPE uint64
 
 type Tree struct {
-	rootOff    OFFTYPE
-	nodePool   *sync.Pool
-	freeBlocks []OFFTYPE
-	file       *os.File
-	blockSize  uint64
-	fileSize   uint64
-	rwMu 		sync.RWMutex
+	rootOff    		OFFTYPE
+	nodePool   		*sync.Pool
+	freeBlocks 		[]OFFTYPE
+	file       		*os.File
+	blockSize  		uint64
+	fileSize   		uint64
+	rwMu 			*sync.RWMutex
+	nodeMuMap  		map[OFFTYPE]int
+	nodeMuMapRWMu 	*sync.RWMutex
 }
 
 type Node struct {
@@ -39,7 +41,6 @@ type Node struct {
 	Keys     []uint64  // 8字节的key
 	Records  []string  // 最大8字节的字符串
 	IsLeaf   bool      //1
-	rwMu 	 sync.RWMutex
 }
 
 func NewTree(filename string) (*Tree, error) {
@@ -50,7 +51,11 @@ func NewTree(filename string) (*Tree, error) {
 	)
 
 	t := &Tree{}
-	t.rwMu = sync.RWMutex{}
+
+	t.rwMu = &sync.RWMutex{}
+	t.nodeMuMap = map[OFFTYPE]int{}
+	t.nodeMuMapRWMu = &sync.RWMutex{}
+
 	t.rootOff = INVALID_OFFSET
 	t.nodePool = &sync.Pool{
 		//get 返回一个空node
@@ -154,4 +159,22 @@ func (t *Tree) Close() error {
 		return t.file.Close()
 	}
 	return nil
+}
+
+
+func (t *Tree)NodeLock(off OFFTYPE)bool{
+	t.nodeMuMapRWMu.Lock()
+	defer t.nodeMuMapRWMu.Unlock()
+	if _,ok := t.nodeMuMap[off] ;ok{
+		return false
+	}else{
+		t.nodeMuMap[off] = 1
+		return true
+	}
+}
+
+func (t *Tree)NodeUnlock(off OFFTYPE){
+	t.nodeMuMapRWMu.Lock()
+	defer t.nodeMuMapRWMu.Unlock()
+	delete(t.nodeMuMap,off)
 }

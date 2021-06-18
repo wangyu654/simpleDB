@@ -9,6 +9,9 @@ import (
 
 // 通过offset 寻找并赋值node
 func (t *Tree) seekNode(node *Node, off OFFTYPE) error {
+	// 自旋等待
+	for t.NodeLock(off){}
+	
 	if node == nil {
 		return fmt.Errorf("cant use nil for seekNode")
 	}

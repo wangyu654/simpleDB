@@ -17,8 +17,6 @@ func (t *Tree) Find(key uint64) (string, error) {
 	if err = t.findLeaf(node, key); err != nil {
 		return "", err
 	}
-	node.rwMu.RLock()
-	defer node.rwMu.Unlock()
 	t.rwMu.RUnlock()
 	defer t.putNodePool(node)
 
@@ -27,6 +25,7 @@ func (t *Tree) Find(key uint64) (string, error) {
 			return node.Records[i], nil
 		}
 	}
+	t.NodeUnlock(node.Self)
 	return "", NotFoundKey
 }
 
