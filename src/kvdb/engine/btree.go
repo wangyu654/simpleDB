@@ -26,6 +26,7 @@ type Tree struct {
 	file       *os.File
 	blockSize  uint64
 	fileSize   uint64
+	rwMu 		sync.RWMutex
 }
 
 type Node struct {
@@ -38,6 +39,7 @@ type Node struct {
 	Keys     []uint64  // 8字节的key
 	Records  []string  // 最大8字节的字符串
 	IsLeaf   bool      //1
+	rwMu 	 sync.RWMutex
 }
 
 func NewTree(filename string) (*Tree, error) {
@@ -48,7 +50,7 @@ func NewTree(filename string) (*Tree, error) {
 	)
 
 	t := &Tree{}
-
+	t.rwMu = sync.RWMutex{}
 	t.rootOff = INVALID_OFFSET
 	t.nodePool = &sync.Pool{
 		//get 返回一个空node
