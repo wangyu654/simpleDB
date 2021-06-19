@@ -2,13 +2,13 @@ package kvdb
 
 import (
 	"crypto/rand"
-	"golab1/src/labrpc"
 	"math/big"
+	"net/rpc"
 	"sync"
 )
 
 type Clerk struct {
-	servers   []*labrpc.ClientEnd
+	servers   []*rpc.Client
 	mu        sync.Mutex
 	leader    int
 	requestId int //递增
@@ -22,7 +22,7 @@ func nrand() int64 {
 	return x
 }
 
-func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
+func MakeClerk(servers []*rpc.Client) *Clerk {
 	ck := new(Clerk)
 	ck.servers = servers
 	ck.clientId = nrand()

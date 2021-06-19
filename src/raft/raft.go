@@ -1,48 +1,19 @@
 package raft
 
-//
-// this is an outline of the API that raft must expose to
-// the service (or tester). see comments below for
-// each of these functions for more details.
-//
-// rf = Make(...)
-//   create a new Raft server.
-// rf.Start(command interface{}) (index, term, isleader)
-//   start agreement on a new log entry
-// rf.GetState() (term, isLeader)
-//   ask a Raft for its current term, and whether it thinks it is leader
-// ApplyMsg
-//   each time a new entry is committed to the log, each Raft peer
-//   should send an ApplyMsg to the service (or tester)
-//   in the same server.
-//
-
 import (
-	"bytes"
-	"golab1/src/labgob"
-	"golab1/src/labrpc"
 	"math/rand"
+	"net/rpc"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-// import "bytes"
-// import "golab1/src/labgob"
-
-//
-// A Go object implementing a single Raft peer.
-//
 type Raft struct {
-	mu        sync.Mutex          // Lock to protect shared access to this peer's state
-	peers     []*labrpc.ClientEnd // RPC end points of all peers
-	persister *Persister          // Object to hold this peer's persisted state
-	me        int                 // this peer's index into peers[]
-	dead      int32               // set by Kill()
-
-	// Your data here (2A, 2B, 2C).
-	// Look at the paper's Figure 2 for a description of what
-	// state a Raft server must maintain.
+	mu        sync.Mutex    // Lock to protect shared access to this peer's state
+	peers     []*rpc.Client // RPC end points of all peers
+	persister *Persister    // Object to hold this peer's persisted state
+	me        int           // this peer's index into peers[]
+	dead      int32         // set by Kill()
 
 	log []LogEntry
 
@@ -65,8 +36,6 @@ type Raft struct {
 	chanAppend []chan bool
 }
 
-// return currentTerm and whether this server
-// believes it is the leader.
 func (rf *Raft) GetState() (int, bool) {
 
 	rf.mu.Lock()
@@ -75,36 +44,28 @@ func (rf *Raft) GetState() (int, bool) {
 	return rf.currentTerm, rf.role == Leader
 }
 
-//
-// save Raft's persistent state to stable storage,
-// where it can later be retrieved after a crash and restart.
-// see paper's Figure 2 for a description of what should be persistent.
-//
 func (rf *Raft) persist() {
-	w := new(bytes.Buffer)
-	e := labgob.NewEncoder(w)
-	e.Encode(rf.currentTerm)
-	e.Encode(rf.votedFor)
-	e.Encode(rf.log)
-	data := w.Bytes()
-	rf.persister.SaveRaftState(data)
+	// w := new(bytes.Buffer)
+	// e := labgob.NewEncoder(w)
+	// e.Encode(rf.currentTerm)
+	// e.Encode(rf.votedFor)
+	// e.Encode(rf.log)
+	// data := w.Bytes()
+	// rf.persister.SaveRaftState(data)
 }
 
-//
-// restore previously persisted state.
-//
 func (rf *Raft) readPersist(data []byte) {
 	if data == nil || len(data) < 1 { // bootstrap without any state?
 		return
 	}
 
-	r := bytes.NewBuffer(data)
-	d := labgob.NewDecoder(r)
+	// r := bytes.NewBuffer(data)
+	// d := labgob.NewDecoder(r)
 
 	rf.mu.Lock()
-	d.Decode(&rf.currentTerm)
-	d.Decode(&rf.votedFor)
-	d.Decode(&rf.log)
+	// d.Decode(&rf.currentTerm)
+	// d.Decode(&rf.votedFor)
+	// d.Decode(&rf.log)
 	rf.mu.Unlock()
 
 	DPrintf("[%d] read persist [%d]", rf.me, rf.log[len(rf.log)-1].Index)
@@ -137,17 +98,6 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	return index, term, isLeader
 }
 
-//
-// the tester doesn't halt goroutines created by Raft after each test,
-// but it does call the Kill() method. your code can use killed() to
-// check whether Kill() has been called. the use of atomic avoids the
-// need for a lock.
-//
-// the issue is that long-running goroutines use memory and may chew
-// up CPU time, perhaps causing later tests to fail and generating
-// confusing debug output. any goroutine with a long-running loop
-// should call killed() to check whether it should stop.
-//
 func (rf *Raft) Kill() {
 	atomic.StoreInt32(&rf.dead, 1)
 }
@@ -157,7 +107,7 @@ func (rf *Raft) killed() bool {
 	return z == 1
 }
 
-func Make(peers []*labrpc.ClientEnd, me int,
+func Make(peers []*rpc.Client, me int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
 	rf := &Raft{}
 	rf.peers = peers
@@ -188,16 +138,15 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	rf.chanRole = make(chan Role)
 
-	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
 
-	go rf.Run()
+	go rf.ChangeRole()
 	go rf.startElectTimer()
 
 	return rf
 }
 
-func (rf *Raft) Run() {
+func (rf *Raft) ChangeRole() {
 	role := rf.role
 	for {
 		switch role {

@@ -1,7 +1,6 @@
 package raft
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -32,7 +31,6 @@ func (leader *Raft) DoHeartbeat() {
 
 func (leader *Raft) doAppendEntries(server int) {
 
-	//
 	/*
 
 		+--------------------+
@@ -99,8 +97,10 @@ func (rf *Raft) sendAppendEntries(server int, args AppendEntriesArgs, reply *App
 	var ret bool
 	c := make(chan bool)
 	go func() {
-		ok := rf.peers[server].Call("Raft.AppendEntries", args, reply)
-		c <- ok
+		err := rf.peers[server].Call("Raft.AppendEntries", args, reply)
+		if err == nil {
+			c <- true
+		}
 	}()
 	select {
 	case ret = <-c:
@@ -113,9 +113,7 @@ func (rf *Raft) sendAppendEntries(server int, args AppendEntriesArgs, reply *App
 
 func (candidate *Raft) DoElection() {
 	//初始化选举rpc参数
-	fmt.Println("before")
 	candidate.mu.Lock()
-	fmt.Println("after")
 	candidate.votedFor = candidate.me
 	candidate.currentTerm++
 	args := RequestVoteArgs{}
@@ -192,8 +190,10 @@ func (rf *Raft) sendRequestVote(server int, args RequestVoteArgs, reply *Request
 	var ret bool
 	c := make(chan bool)
 	go func() {
-		ok := rf.peers[server].Call("Raft.RequestVote", args, reply)
-		c <- ok
+		err := rf.peers[server].Call("Raft.RequestVote", args, reply)
+		if err == nil {
+			c <- true
+		}
 	}()
 	select {
 	case ret = <-c:

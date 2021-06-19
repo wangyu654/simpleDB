@@ -2,10 +2,10 @@ package kvdb
 
 import (
 	"golab1/src/kvdb/engine"
-	"golab1/src/labgob"
-	"golab1/src/labrpc"
 	"golab1/src/raft"
 	"log"
+	"net/http"
+	"net/rpc"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -22,7 +22,7 @@ func DPrintf(format string, a ...interface{}) (n int, err error) {
 
 type Command struct {
 	OpType string
-	Args   interface{}
+	Args   interface{} //PutAppendArgs or GetArgs
 }
 
 type KVServer struct {
@@ -49,28 +49,6 @@ func (kv *KVServer) Kill() {
 func (kv *KVServer) killed() bool {
 	z := atomic.LoadInt32(&kv.dead)
 	return z == 1
-}
-
-func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister, maxraftstate int) *KVServer {
-	labgob.Register(Command{})
-	labgob.Register(PutAppendArgs{})
-	labgob.Register(GetArgs{})
-	labgob.Register(PutAppendReply{})
-	labgob.Register(GetReply{})
-
-	kv := new(KVServer)
-	kv.me = me
-	kv.maxraftstate = maxraftstate
-
-	kv.applyCh = make(chan raft.ApplyMsg)
-	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
-	kv.ack = map[int64]int{}
-	kv.database = &engine.Tree{}
-	kv.messages = map[int]chan Message{}
-
-	go kv.getLogFromRaft()
-
-	return kv
 }
 
 type Message struct {
@@ -131,7 +109,7 @@ func (kv *KVServer) apply(command Command, isDuplicated bool) interface{} {
 		args := command.Args.(GetArgs)
 		// kv.printInfo("get", args.Key)
 		reply := GetReply{}
-		if key,err = strconv.ParseUint(args.Key,10,64);err !=nil{
+		if key, err = strconv.ParseUint(args.Key, 10, 64); err != nil {
 			reply.Err = ErrNoKey
 			return reply
 		}
@@ -146,20 +124,17 @@ func (kv *KVServer) apply(command Command, isDuplicated bool) interface{} {
 		args := command.Args.(PutAppendArgs)
 		// fmt.Println("args:", args, "reqeustId", args.RequestId)
 		reply := PutAppendReply{}
-		if key,err = strconv.ParseUint(args.Key,10,64);err !=nil{
+		if key, err = strconv.ParseUint(args.Key, 10, 64); err != nil {
 			reply.Err = ErrNoKey
 			return reply
 		}
 		if !isDuplicated {
 			if args.Op == "Put" {
-				// kv.printInfo("put key:", args.Key, "value:", args.Value)
-				// kv.database[args.Key] = args.Value
-				kv.database.Insert(key,args.Value)
+				kv.database.Insert(key, args.Value)
 			} else if args.Op == "Append" {
-				// kv.database[args.Key] += args.Value
-				// kv.printInfo("append key:", args.Key, "value:", kv.database[args.Key])
 				if value, err := kv.database.Find(key); err == nil {
-					kv.database.Update(key,value+args.Value)
+					kv.database.Update(key, value+args.Value)
+
 				} else {
 					reply.Err = ErrNoKey
 				}
@@ -180,3 +155,50 @@ func (kv *KVServer) isDuplicated(clientId int64, requestId int) bool {
 	kv.ack[clientId] = requestId
 	return false
 }
+
+func StartKVServer(servers []*rpc.Client, me int, persister *raft.Persister, maxraftstate int) {
+
+	rpc.Register(new(raft.Raft))
+	rpc.Register(new(KVServer))
+
+	kv := new(KVServer)
+	kv.me = me
+	kv.maxraftstate = maxraftstate
+
+	kv.applyCh = make(chan raft.ApplyMsg)
+	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
+	kv.ack = map[int64]int{}
+	kv.database = &engine.Tree{}
+	kv.messages = map[int]chan Message{}
+
+	go kv.getLogFromRaft()
+
+	rpc.HandleHTTP()
+	err := http.ListenAndServe(":8000", nil)
+	if err != nil {
+		log.Panicln(err)
+	}
+}
+
+func Start() {
+	/*
+		n := 0
+		addresses := []string{}
+		读取配置
+	*/
+	index := 0
+	addresses := []string{}
+	servers := []*rpc.Client{}
+	for i, address := range addresses {
+		if i == index {
+			continue
+		}
+		conn, err := rpc.DialHTTP("tcp", address)
+		if err != nil {
+			log.Fatal(err)
+		}
+		servers = append(servers, conn)
+	}
+	StartKVServer(servers, index, raft.MakePersister(), -1)
+}
+
