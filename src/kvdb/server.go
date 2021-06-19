@@ -1,10 +1,12 @@
 package kvdb
 
 import (
+	"golab1/src/kvdb/engine"
 	"golab1/src/labgob"
 	"golab1/src/labrpc"
 	"golab1/src/raft"
 	"log"
+	"strconv"
 	"sync"
 	"sync/atomic"
 )
@@ -34,7 +36,7 @@ type KVServer struct {
 
 	messages map[int]chan Message
 	ack      map[int64]int
-	database map[string]string // for storing data
+	database *engine.Tree // for storing data
 
 }
 
@@ -63,7 +65,7 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv.applyCh = make(chan raft.ApplyMsg)
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 	kv.ack = map[int64]int{}
-	kv.database = map[string]string{}
+	kv.database = &engine.Tree{}
 	kv.messages = map[int]chan Message{}
 
 	go kv.getLogFromRaft()
@@ -116,15 +118,24 @@ func (kv *KVServer) sendMsg(index int, msg Message) {
 }
 
 func (kv *KVServer) apply(command Command, isDuplicated bool) interface{} {
+	var (
+		key uint64
+		err error
+	)
+
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
 	// fmt.Println("command:", command)
 	switch command.OpType {
 	case "Get":
 		args := command.Args.(GetArgs)
-		kv.printInfo("get", args.Key)
+		// kv.printInfo("get", args.Key)
 		reply := GetReply{}
-		if value, ok := kv.database[args.Key]; ok {
+		if key,err = strconv.ParseUint(args.Key,10,64);err !=nil{
+			reply.Err = ErrNoKey
+			return reply
+		}
+		if value, err := kv.database.Find(key); err == nil {
 			reply.Err = OK
 			reply.Value = value
 		} else {
@@ -135,13 +146,23 @@ func (kv *KVServer) apply(command Command, isDuplicated bool) interface{} {
 		args := command.Args.(PutAppendArgs)
 		// fmt.Println("args:", args, "reqeustId", args.RequestId)
 		reply := PutAppendReply{}
+		if key,err = strconv.ParseUint(args.Key,10,64);err !=nil{
+			reply.Err = ErrNoKey
+			return reply
+		}
 		if !isDuplicated {
 			if args.Op == "Put" {
 				// kv.printInfo("put key:", args.Key, "value:", args.Value)
-				kv.database[args.Key] = args.Value
+				// kv.database[args.Key] = args.Value
+				kv.database.Insert(key,args.Value)
 			} else if args.Op == "Append" {
-				kv.database[args.Key] += args.Value
+				// kv.database[args.Key] += args.Value
 				// kv.printInfo("append key:", args.Key, "value:", kv.database[args.Key])
+				if value, err := kv.database.Find(key); err == nil {
+					kv.database.Update(key,value+args.Value)
+				} else {
+					reply.Err = ErrNoKey
+				}
 			}
 		}
 		reply.Err = OK
