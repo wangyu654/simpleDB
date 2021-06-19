@@ -1,4 +1,4 @@
-package engine
+package bptree
 
 func (t *Tree) Insert(key uint64, val string) error {
 	var (

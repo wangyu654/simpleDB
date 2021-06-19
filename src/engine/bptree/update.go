@@ -1,4 +1,4 @@
-package engine
+package bptree
 
 func (t *Tree) Update(key uint64, val string) error {
 	t.rwMu.Lock()

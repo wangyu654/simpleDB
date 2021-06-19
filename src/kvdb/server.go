@@ -1,7 +1,9 @@
 package kvdb
 
 import (
-	"golab1/src/kvdb/engine"
+	"golab1/src/engine"
+	"golab1/src/engine/bptree"
+
 	"golab1/src/raft"
 	"log"
 	"net/http"
@@ -36,14 +38,12 @@ type KVServer struct {
 
 	messages map[int]chan Message
 	ack      map[int64]int
-	database *engine.Tree // for storing data
-
+	database engine.Engine
 }
 
 func (kv *KVServer) Kill() {
 	atomic.StoreInt32(&kv.dead, 1)
 	kv.rf.Kill()
-	// Your code here, if desired.
 }
 
 func (kv *KVServer) killed() bool {
@@ -122,7 +122,6 @@ func (kv *KVServer) apply(command Command, isDuplicated bool) interface{} {
 		return reply
 	case "PutAppend":
 		args := command.Args.(PutAppendArgs)
-		// fmt.Println("args:", args, "reqeustId", args.RequestId)
 		reply := PutAppendReply{}
 		if key, err = strconv.ParseUint(args.Key, 10, 64); err != nil {
 			reply.Err = ErrNoKey
@@ -134,7 +133,6 @@ func (kv *KVServer) apply(command Command, isDuplicated bool) interface{} {
 			} else if args.Op == "Append" {
 				if value, err := kv.database.Find(key); err == nil {
 					kv.database.Update(key, value+args.Value)
-
 				} else {
 					reply.Err = ErrNoKey
 				}
@@ -168,7 +166,7 @@ func StartKVServer(servers []*rpc.Client, me int, persister *raft.Persister, max
 	kv.applyCh = make(chan raft.ApplyMsg)
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 	kv.ack = map[int64]int{}
-	kv.database = &engine.Tree{}
+	kv.database = &bptree.Tree{}
 	kv.messages = map[int]chan Message{}
 
 	go kv.getLogFromRaft()
@@ -201,4 +199,3 @@ func Start() {
 	}
 	StartKVServer(servers, index, raft.MakePersister(), -1)
 }
-

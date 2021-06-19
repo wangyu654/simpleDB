@@ -1,4 +1,4 @@
-package engine
+package bptree
 
 import (
 	"errors"
@@ -20,15 +20,15 @@ const (
 type OFFTYPE uint64
 
 type Tree struct {
-	rootOff    		OFFTYPE
-	nodePool   		*sync.Pool
-	freeBlocks 		[]OFFTYPE
-	file       		*os.File
-	blockSize  		uint64
-	fileSize   		uint64
-	rwMu 			*sync.RWMutex
-	nodeMuMap  		map[OFFTYPE]int
-	nodeMuMapRWMu 	*sync.RWMutex
+	rootOff       OFFTYPE
+	nodePool      *sync.Pool
+	freeBlocks    []OFFTYPE
+	file          *os.File
+	blockSize     uint64
+	fileSize      uint64
+	rwMu          *sync.RWMutex
+	nodeMuMap     map[OFFTYPE]int
+	nodeMuMapRWMu *sync.RWMutex
 }
 
 type Node struct {
@@ -161,20 +161,19 @@ func (t *Tree) Close() error {
 	return nil
 }
 
-
-func (t *Tree)NodeLock(off OFFTYPE)bool{
+func (t *Tree) NodeLock(off OFFTYPE) bool {
 	t.nodeMuMapRWMu.Lock()
 	defer t.nodeMuMapRWMu.Unlock()
-	if _,ok := t.nodeMuMap[off] ;ok{
+	if _, ok := t.nodeMuMap[off]; ok {
 		return false
-	}else{
+	} else {
 		t.nodeMuMap[off] = 1
 		return true
 	}
 }
 
-func (t *Tree)NodeUnlock(off OFFTYPE){
+func (t *Tree) NodeUnlock(off OFFTYPE) {
 	t.nodeMuMapRWMu.Lock()
 	defer t.nodeMuMapRWMu.Unlock()
-	delete(t.nodeMuMap,off)
+	delete(t.nodeMuMap, off)
 }
