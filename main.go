@@ -1,6 +1,6 @@
 package main
 
-import "golab1/src/kvdb"
+import "simpleDB/src/kvdb"
 
 func main() {
 	kvdb.Start()

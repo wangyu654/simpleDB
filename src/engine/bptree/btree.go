@@ -27,7 +27,7 @@ type Tree struct {
 	blockSize     uint64
 	fileSize      uint64
 	rwMu          *sync.RWMutex
-	nodeMuMap     map[OFFTYPE]int
+	nodeMuMap     sync.Map
 	nodeMuMapRWMu *sync.RWMutex
 }
 
@@ -53,7 +53,7 @@ func NewTree(filename string) (*Tree, error) {
 	t := &Tree{}
 
 	t.rwMu = &sync.RWMutex{}
-	t.nodeMuMap = map[OFFTYPE]int{}
+	t.nodeMuMap = sync.Map{}
 	t.nodeMuMapRWMu = &sync.RWMutex{}
 
 	t.rootOff = INVALID_OFFSET
@@ -164,10 +164,11 @@ func (t *Tree) Close() error {
 func (t *Tree) NodeLock(off OFFTYPE) bool {
 	t.nodeMuMapRWMu.Lock()
 	defer t.nodeMuMapRWMu.Unlock()
-	if _, ok := t.nodeMuMap[off]; ok {
+
+	if _, ok := t.nodeMuMap.Load(off); ok {
 		return false
 	} else {
-		t.nodeMuMap[off] = 1
+		t.nodeMuMap.Store(off, 1)
 		return true
 	}
 }
@@ -175,5 +176,5 @@ func (t *Tree) NodeLock(off OFFTYPE) bool {
 func (t *Tree) NodeUnlock(off OFFTYPE) {
 	t.nodeMuMapRWMu.Lock()
 	defer t.nodeMuMapRWMu.Unlock()
-	delete(t.nodeMuMap, off)
+	t.nodeMuMap.Delete(off)
 }
