@@ -1,9 +1,8 @@
 package kvdb
 
 import (
-	"simpleDB/src/engine"
-
-	"simpleDB/src/raft"
+	"simpleDB/server/engine"
+	"simpleDB/server/raft"
 	"strconv"
 	"sync"
 )

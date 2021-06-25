@@ -5,8 +5,9 @@ import (
 	"log"
 	"net/http"
 	"net/rpc"
-	"simpleDB/src/engine/bptree"
-	"simpleDB/src/raft"
+
+	"simpleDB/server/engine/bptree"
+	"simpleDB/server/raft"
 
 	"sigs.k8s.io/yaml"
 )

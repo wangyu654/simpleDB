@@ -1,6 +1,6 @@
 package main
 
-import "simpleDB/src/kvdb"
+import "simpleDB/server/kvdb"
 
 func main() {
 	kvdb.Start()

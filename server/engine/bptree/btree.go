@@ -20,15 +20,15 @@ const (
 type OFFTYPE uint64
 
 type Tree struct {
-	rootOff       OFFTYPE
-	nodePool      *sync.Pool
-	freeBlocks    []OFFTYPE
-	file          *os.File
-	blockSize     uint64
-	fileSize      uint64
-	rwMu          *sync.RWMutex
-	nodeMuMap     sync.Map
-	nodeMuMapRWMu *sync.RWMutex
+	rootOff    OFFTYPE
+	nodePool   *sync.Pool
+	freeBlocks []OFFTYPE
+	file       *os.File
+	blockSize  uint64
+	fileSize   uint64
+	rwMu       *sync.RWMutex
+	nodeMuMap  sync.Map
+	nodeCond   *sync.Cond
 }
 
 type Node struct {
@@ -54,7 +54,7 @@ func NewTree(filename string) (*Tree, error) {
 
 	t.rwMu = &sync.RWMutex{}
 	t.nodeMuMap = sync.Map{}
-	t.nodeMuMapRWMu = &sync.RWMutex{}
+	t.nodeCond = &sync.Cond{}
 
 	t.rootOff = INVALID_OFFSET
 	t.nodePool = &sync.Pool{
@@ -159,22 +159,4 @@ func (t *Tree) Close() error {
 		return t.file.Close()
 	}
 	return nil
-}
-
-func (t *Tree) NodeLock(off OFFTYPE) bool {
-	t.nodeMuMapRWMu.Lock()
-	defer t.nodeMuMapRWMu.Unlock()
-
-	if _, ok := t.nodeMuMap.Load(off); ok {
-		return false
-	} else {
-		t.nodeMuMap.Store(off, 1)
-		return true
-	}
-}
-
-func (t *Tree) NodeUnlock(off OFFTYPE) {
-	t.nodeMuMapRWMu.Lock()
-	defer t.nodeMuMapRWMu.Unlock()
-	t.nodeMuMap.Delete(off)
 }
