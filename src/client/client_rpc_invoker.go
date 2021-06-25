@@ -1,4 +1,4 @@
-package kvdb
+package client
 
 func (ck *Clerk) Get(key string) string {
 	// 整个客户端串行

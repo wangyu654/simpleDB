@@ -1,4 +1,4 @@
-package kvdb
+package client
 
 import (
 	"crypto/rand"
