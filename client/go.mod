@@ -1,4 +1,4 @@
-module simpleDB
+module client
 
 go 1.14
 
