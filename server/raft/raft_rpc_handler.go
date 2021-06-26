@@ -2,7 +2,7 @@ package raft
 
 // example RequestVote RPC handler.
 //
-func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
+func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) error {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 	defer rf.persist()
@@ -14,14 +14,13 @@ func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 
 	if rf.currentTerm > args.Term {
 		rf.printInfo("reject", args.CandidateId, ",term is older,", args.Term, "vs", rf.currentTerm)
-		return
+		return nil
 	}
-
 	if rf.currentTerm == args.Term {
 		if rf.votedFor != -1 && rf.votedFor != args.CandidateId {
 			// 本轮已经投票
 			rf.printInfo("reject ", args.CandidateId, "has voted")
-			return
+			return nil
 		}
 	}
 
@@ -32,34 +31,35 @@ func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 		if rf.log[len(rf.log)-1].Term > args.LastLogTerm || (rf.log[len(rf.log)-1].Term == args.LastLogTerm && rf.log[len(rf.log)-1].Index > args.LastLogIndex) {
 			// 候选人的log更旧
 			rf.printInfo("reject", args.CandidateId, ",log is older")
-			return
+			return nil
 		}
 	}
 
+	rf.printInfo("support", args.CandidateId)
 	rf.vote(args, reply)
+	return nil
 }
 
 func (rf *Raft) vote(args RequestVoteArgs, reply *RequestVoteReply) {
 	rf.chanGrantVote <- true
 	reply.VoteGranted = true
-	rf.printInfo("support", args.CandidateId)
 }
 
-func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply) {
+func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply) error {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 	defer rf.persist()
-
+	rf.printInfo("receive heartbeat")
 	if args.Term < rf.currentTerm {
-		rf.printInfo("reject hearbeat from leader, leader:", args.Term, "vs local:", rf.currentTerm)
+		// rf.printInfo("reject hearbeat from leader, leader:", args.Term, "vs local:", rf.currentTerm)
 		reply.Success = false
 		reply.Term = rf.currentTerm
-		return
+		return nil
 	}
 
 	rf.chanHeartbeat <- true
 
-	rf.printInfo("receive hearbeat from leader, leader:", args.Term, "vs local:", rf.currentTerm)
+	// rf.printInfo("receive hearbeat from leader, leader:", args.Term, "vs local:", rf.currentTerm)
 	if args.Term > rf.currentTerm {
 		rf.currentTerm = args.Term
 		if rf.role != Follower {
@@ -72,14 +72,14 @@ func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply)
 	if args.PrevLogIndex < baseLogIndex {
 		reply.Success = false
 		reply.NextIndex = baseLogIndex + 1
-		return
+		return nil
 	}
 
 	if args.PrevLogIndex >= baseLogIndex+len(rf.log) {
 		//要比较的index大于peer的日志范围
 		reply.Success = false
 		reply.NextIndex = baseLogIndex + len(rf.log)
-		return
+		return nil
 	}
 
 	if rf.log[args.PrevLogIndex-baseLogIndex].Term != args.PrevLogTerm {
@@ -92,7 +92,7 @@ func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply)
 			nextIndex--
 		}
 		reply.NextIndex = nextIndex
-		return
+		return nil
 	}
 	var updateLogIndex int
 	if len(args.Entry) != 0 {
@@ -123,4 +123,5 @@ func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply)
 	}
 	reply.Success = true
 	rf.updateFollowerCommit(args.LeaderCommit, updateLogIndex)
+	return nil
 }

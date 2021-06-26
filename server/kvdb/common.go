@@ -5,16 +5,15 @@ const (
 	ErrNoKey       = "ErrNoKey"
 	ErrWrongLeader = "ErrWrongLeader"
 	ErrKeyFormat   = "ErrKeyFormat"
-
 )
 
 type Err string
 
 // Put or Append
 type PutAppendArgs struct {
-	Key   string
-	Value string
-	Op    string
+	Key       string
+	Value     string
+	Op        string
 	ClientId  int64
 	RequestId int
 }

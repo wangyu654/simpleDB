@@ -1,6 +1,8 @@
 package raft
 
 import (
+	"fmt"
+	"log"
 	"time"
 )
 
@@ -97,16 +99,19 @@ func (rf *Raft) sendAppendEntries(server int, args AppendEntriesArgs, reply *App
 	var ret bool
 	c := make(chan bool)
 	go func() {
+		rf.printInfo("send heartbeat to ", server)
 		err := rf.peers[server].Call("Raft.AppendEntries", args, reply)
 		if err == nil {
 			c <- true
+		} else {
+			log.Println("failed to send heart because of", err)
 		}
 	}()
 	select {
 	case ret = <-c:
-	case <-time.After(RaftHeartbeatPeriod):
-		rf.printInfo("send heartbeat failed to ", server, "becaust of net")
-		ret = false
+		// case <-time.After(RaftHeartbeatPeriod):
+		// 	rf.printInfo("send heartbeat failed to ", server, "because of net")
+		// 	ret = false
 	}
 	return ret
 }
@@ -130,10 +135,10 @@ func (candidate *Raft) DoElection() {
 		}
 		go func(index int) {
 			reply := &RequestVoteReply{}
-			candidate.printInfo("request vote to", index)
+			// candidate.printInfo("request vote to", index)
 			if candidate.sendRequestVote(index, args, reply) {
 				//接收到了消息
-				// fmt.Printf("reply:+%v", reply)
+				fmt.Printf("receive requestVote reply:+%v", reply)
 				if reply.VoteGranted {
 					chanGather <- true
 				} else {
@@ -190,17 +195,20 @@ func (rf *Raft) sendRequestVote(server int, args RequestVoteArgs, reply *Request
 	var ret bool
 	c := make(chan bool)
 	go func() {
+		rf.printInfo("send reqeustVote to ", server)
 		err := rf.peers[server].Call("Raft.RequestVote", args, reply)
 		if err == nil {
 			c <- true
+		} else {
+			log.Println("failed to send heart because of", err)
 		}
 	}()
 	select {
 	case ret = <-c:
-	case <-time.After(RaftHeartbeatPeriod):
-		//未接收消息
-		rf.printInfo("send reqeustVote failed to ", server, "becaust of net")
-		ret = false
+		// case <-time.After(RaftHeartbeatPeriod):
+		// 	//未接收消息
+		// 	rf.printInfo("send reqeustVote failed to ", server, "because of net")
+		// 	ret = false
 	}
 	return ret
 }

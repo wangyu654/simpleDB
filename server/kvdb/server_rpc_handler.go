@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
+func (kv *KVServer) Get(args *GetArgs, reply *GetReply) error {
 	cmd := Command{
 		OpType: "Get",
 		Args:   *args,
@@ -14,7 +14,7 @@ func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 	index, _, isLeader := kv.rf.Start(cmd)
 	if !isLeader {
 		// 不是leader
-		return
+		return nil
 	}
 
 	kv.mu.Lock()
@@ -27,7 +27,7 @@ func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 	select {
 	case msg := <-chanMsg:
 		if recArgs, ok := msg.args.(GetArgs); !ok {
-			return
+			return nil
 		} else {
 			if args.RequestId == recArgs.RequestId && args.ClientId == recArgs.ClientId {
 				//校验 防止reply错误客户端
@@ -38,9 +38,10 @@ func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 		}
 	case <-time.After(time.Second * 1):
 	}
+	return nil
 }
 
-func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
+func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 	cmd := Command{
 		OpType: "PutAppend",
 		Args:   *args,
@@ -50,7 +51,7 @@ func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 	index, _, isLeader := kv.rf.Start(cmd)
 	if !isLeader {
 		// 不是leader
-		return
+		return nil
 	}
 
 	kv.mu.Lock()
@@ -63,7 +64,7 @@ func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 	select {
 	case msg := <-chanMsg:
 		if recArgs, ok := msg.args.(PutAppendArgs); !ok {
-			return
+			return nil
 		} else {
 			if args.RequestId == recArgs.RequestId && args.ClientId == recArgs.ClientId {
 				//校验 防止reply错误客户端
@@ -74,4 +75,5 @@ func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 		}
 	case <-time.After(time.Second * 1):
 	}
+	return nil
 }

@@ -1,7 +1,7 @@
 package raft
 
 func (rf *Raft) updateFollowerCommit(leaderCommit int, lastIndex int) {
-	rf.printInfo("leader commitIndex:", leaderCommit, ",local lastIndex", lastIndex)
+	// rf.printInfo("leader commitIndex:", leaderCommit, ",local lastIndex", lastIndex)
 	oldVal := rf.commitIndex
 	if leaderCommit > rf.commitIndex {
 		if leaderCommit < lastIndex {
@@ -15,7 +15,7 @@ func (rf *Raft) updateFollowerCommit(leaderCommit int, lastIndex int) {
 	baseIndex := rf.log[0].Index
 	for oldVal++; oldVal <= rf.commitIndex; oldVal++ {
 		//DPrintf("[%d] follower apply: [%d] [%d]", rf.me, oldVal, rf.logTable[oldVal-baseIndex].Command)
-		rf.printInfo("follower commit log:", rf.log[oldVal].Command)
+		// rf.printInfo("follower commit log:", rf.log[oldVal].Command)
 		rf.chanCommitted <- ApplyMsg{
 			CommandIndex: oldVal,
 			Command:      rf.log[oldVal-baseIndex].Command,

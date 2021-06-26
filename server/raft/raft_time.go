@@ -5,9 +5,9 @@ import (
 	"time"
 )
 
-const RaftElectionTimeoutLow = 150 * time.Millisecond
-const RaftElectionTimeoutHigh = 300 * time.Millisecond
-const RaftHeartbeatPeriod = 50 * time.Millisecond
+const RaftElectionTimeoutLow = 1000 * time.Millisecond
+const RaftElectionTimeoutHigh = 2000 * time.Millisecond
+const RaftHeartbeatPeriod = 200 * time.Millisecond
 
 func (follower *Raft) startElectTimer() {
 	floatInterval := int(RaftElectionTimeoutHigh - RaftElectionTimeoutLow)

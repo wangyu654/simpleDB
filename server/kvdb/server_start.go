@@ -1,81 +1,91 @@
 package kvdb
 
 import (
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/rpc"
+	"time"
 
 	"simpleDB/server/engine/bptree"
 	"simpleDB/server/raft"
-
-	"sigs.k8s.io/yaml"
 )
 
-type Config struct {
-	Index     int      `yaml:"index"`
-	Addresses []string `yaml:"addresses"`
-}
+func StartKVServer(servers []*rpc.Client, me int, persister *raft.Persister, maxraftstate int, address string, ch chan bool) {
 
-func readConfig() (*Config, error) {
 	var err error
-
-	config, err := ioutil.ReadFile("./config.yml")
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-
-	cfg := new(Config)
-	if err = yaml.Unmarshal(config, cfg); err != nil {
-		return nil, err
+	if err != nil {
+		panic(err)
 	}
-	return cfg, nil
-}
-
-func StartKVServer(servers []*rpc.Client, me int, persister *raft.Persister, maxraftstate int, address string) {
-
-	rpc.Register(new(raft.Raft))
-	rpc.Register(new(KVServer))
-
 	kv := new(KVServer)
+	rpc.Register(kv)
 	kv.me = me
 	kv.maxraftstate = maxraftstate
 
 	kv.applyCh = make(chan raft.ApplyMsg)
-	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 	kv.ack = map[int64]int{}
 	kv.database = &bptree.Tree{}
 	kv.messages = map[int]chan Message{}
 
-	go kv.getLogFromRaft()
+	go func() {
+		log.Println("waiting for raft prepared")
+		select {
+		case <-ch:
+			kv.rf = raft.Make(servers, me, persister, kv.applyCh)
+			log.Println("raft prepared")
+			go kv.getLogFromRaft()
+		}
+	}()
 
 	rpc.HandleHTTP()
-	err := http.ListenAndServe(address, nil)
+	err = http.ListenAndServe(address, nil)
 	if err != nil {
 		log.Panicln(err)
 	}
+
 }
 
-func Start() {
-	/*
-		n := 0
-		addresses := []string{}
-		读取配置
-	*/
-	cfg, err := readConfig()
-	if err != nil {
-		panic("fail to read config")
-	}
-	servers := []*rpc.Client{}
-	for i, address := range cfg.Addresses {
-		if i == cfg.Index {
+type Client struct {
+	index int
+	conn  *rpc.Client
+}
+
+func getConnection(addresses []string, index int, servers *[]*rpc.Client, finished chan bool) {
+	ch := make(chan *Client)
+	for i, address := range addresses {
+		if i == index {
 			continue
 		}
-		conn, err := rpc.DialHTTP("tcp", address)
-		if err != nil {
-			log.Fatal(err)
-		}
-		servers = append(servers, conn)
+		go func(address string, ch chan *Client, i int) {
+			conn, err := rpc.DialHTTP("tcp", address)
+			for err != nil {
+				log.Println("try to connect", address)
+				time.Sleep(time.Duration(time.Second))
+				conn, err = rpc.DialHTTP("tcp", address)
+			}
+			ch <- &Client{
+				index: i,
+				conn:  conn,
+			}
+		}(address, ch, i)
 	}
-	StartKVServer(servers, cfg.Index, raft.MakePersister(), -1, cfg.Addresses[cfg.Index])
+	rest := len(addresses) - 1
+	for rest > 0 {
+		select {
+		case c := <-ch:
+			log.Println("connected", c.index)
+			(*servers)[c.index] = c.conn
+			rest--
+		}
+	}
+	finished <- true
+}
+
+func Start(addresses []string, index int) {
+	servers := make([]*rpc.Client, len(addresses))
+	ch := make(chan bool)
+	go getConnection(addresses, index, &servers, ch)
+	StartKVServer(servers, index, raft.MakePersister(), -1, addresses[index], ch)
 }

@@ -1,6 +1,8 @@
 package raft
 
 import (
+	"fmt"
+	"log"
 	"math/rand"
 	"net/rpc"
 	"sync"
@@ -84,7 +86,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 		defer rf.mu.Unlock()
 		defer rf.persist()
 
-		rf.printInfo("receive log:", command)
+		// rf.printInfo("receive log:", command)
 		index = len(rf.log) + rf.log[0].Index
 		term = rf.currentTerm
 		isLeader = true
@@ -109,7 +111,8 @@ func (rf *Raft) killed() bool {
 
 func Make(peers []*rpc.Client, me int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
-	rf := &Raft{}
+	rf := new(Raft)
+	rpc.Register(rf)
 	rf.peers = peers
 	rf.persister = persister
 	rf.me = me
@@ -142,13 +145,14 @@ func Make(peers []*rpc.Client, me int,
 
 	go rf.ChangeRole()
 	go rf.startElectTimer()
-
+	log.Println("raft", rf.me, "start")
 	return rf
 }
 
 func (rf *Raft) ChangeRole() {
 	role := rf.role
 	for {
+		fmt.Println(rf.chanRole)
 		switch role {
 		case Leader:
 			go rf.DoHeartbeat()
