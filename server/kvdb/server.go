@@ -59,6 +59,7 @@ func (kv *KVServer) getLogFromRaft() {
 	}
 }
 
+// 发送消息
 func (kv *KVServer) sendMsg(index int, msg Message) {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
@@ -70,6 +71,7 @@ func (kv *KVServer) sendMsg(index int, msg Message) {
 	kv.messages[index] <- msg
 }
 
+// 应用日志
 func (kv *KVServer) apply(command Command, isDuplicated bool) interface{} {
 	var (
 		key uint64
@@ -119,6 +121,7 @@ func (kv *KVServer) apply(command Command, isDuplicated bool) interface{} {
 	return nil
 }
 
+// 判定重复
 func (kv *KVServer) isDuplicated(clientId int64, requestId int) bool {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()

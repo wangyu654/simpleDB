@@ -2,6 +2,7 @@ package main
 
 import (
 	"io/ioutil"
+
 	"simpleDB/server/kvdb"
 
 	"gopkg.in/yaml.v2"
@@ -15,7 +16,7 @@ type Config struct {
 func readConfig() (*Config, error) {
 	var err error
 
-	config, err := ioutil.ReadFile("./config.yaml")
+	config, err := ioutil.ReadFile("../config.yaml")
 	if err != nil {
 		return nil, err
 	}
