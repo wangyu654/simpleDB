@@ -39,7 +39,7 @@ func StartKVServer(servers []*rpc.Client, me int, persister *raft.Persister, max
 
 	kv.applyCh = make(chan raft.ApplyMsg)
 	kv.ack = map[int64]int{}
-	engine, err := bptree.NewTree("db-%i" + strconv.Itoa(me))
+	engine, err := bptree.NewTree("db" + strconv.Itoa(me) + ".wy")
 	if err != nil {
 		panic(err)
 	}
