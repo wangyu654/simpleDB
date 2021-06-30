@@ -1,6 +1,9 @@
 package bptree
 
 func (t *Tree) Insert(key uint64, val string) error {
+	t.rwMu.Lock()
+	defer t.rwMu.Unlock()
+
 	var (
 		err  error
 		node *Node
@@ -26,7 +29,6 @@ func (t *Tree) Insert(key uint64, val string) error {
 }
 
 func (t *Tree) insertIntoLeaf(key uint64, rec string) error {
-	t.rwMu.Lock()
 	var (
 		leaf     *Node
 		err      error
@@ -42,9 +44,8 @@ func (t *Tree) insertIntoLeaf(key uint64, rec string) error {
 		return err
 	}
 
-	t.rwMu.Unlock()
-	defer t.NodeUnlock(leaf.Self)
-	
+	// defer t.NodeUnlock(leaf.Self)
+
 	// 插入到对应位置
 	if idx, err = insertKeyValIntoLeaf(leaf, key, rec); err != nil {
 		return err

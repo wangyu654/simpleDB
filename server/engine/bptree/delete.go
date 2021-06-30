@@ -3,6 +3,9 @@ package bptree
 import "fmt"
 
 func (t *Tree) Delete(key uint64) error {
+	t.rwMu.Lock()
+	defer t.rwMu.Unlock()
+
 	if t.rootOff == INVALID_OFFSET {
 		return fmt.Errorf("not found key:%d", key)
 	}
@@ -10,7 +13,6 @@ func (t *Tree) Delete(key uint64) error {
 }
 
 func (t *Tree) deleteKeyFromLeaf(key uint64) error {
-	t.rwMu.Lock()
 	var (
 		leaf     *Node
 		prevLeaf *Node
@@ -25,9 +27,7 @@ func (t *Tree) deleteKeyFromLeaf(key uint64) error {
 	if err = t.findLeaf(leaf, key); err != nil {
 		return err
 	}
-
-	t.rwMu.Unlock()
-	defer t.NodeUnlock(leaf.Self)
+	// defer t.NodeUnlock(leaf.Self)
 
 	idx = getIndex(leaf.Keys, key)
 	if idx == len(leaf.Keys) || leaf.Keys[idx] != key {
@@ -58,7 +58,7 @@ func (t *Tree) deleteKeyFromLeaf(key uint64) error {
 		if nextLeaf, err = t.newMappingNodeFromPool(leaf.Next); err != nil {
 			return err
 		}
-		defer t.NodeUnlock(nextLeaf.Self)
+		// defer t.NodeUnlock(nextLeaf.Self)
 		// lease from next leaf
 		if len(nextLeaf.Keys) > order/2 {
 			key := nextLeaf.Keys[0]
@@ -106,7 +106,7 @@ func (t *Tree) deleteKeyFromLeaf(key uint64) error {
 		if prevLeaf, err = t.newMappingNodeFromPool(leaf.Prev); err != nil {
 			return err
 		}
-		defer t.NodeUnlock(prevLeaf.Self)
+		// defer t.NodeUnlock(prevLeaf.Self)
 		// lease from prev leaf
 		if len(prevLeaf.Keys) > order/2 {
 			key := prevLeaf.Keys[len(prevLeaf.Keys)-1]

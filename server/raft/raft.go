@@ -1,7 +1,6 @@
 package raft
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 	"net/rpc"
@@ -75,16 +74,14 @@ func (rf *Raft) readPersist(data []byte) {
 
 //向leader提交cmd
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
-	// fmt.Println(rf.persister.mu)
-
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	defer rf.persist()
 	index := -1
 	term := -1
 	isLeader := false
 
 	if rf.role == Leader {
-		rf.mu.Lock()
-		defer rf.mu.Unlock()
-		defer rf.persist()
 
 		// rf.printInfo("receive log:", command)
 		index = len(rf.log) + rf.log[0].Index
@@ -152,7 +149,7 @@ func Make(peers []*rpc.Client, me int,
 func (rf *Raft) ChangeRole() {
 	role := rf.role
 	for {
-		fmt.Println(rf.chanRole)
+		// fmt.Println(rf.chanRole)
 		switch role {
 		case Leader:
 			go rf.DoHeartbeat()

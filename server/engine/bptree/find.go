@@ -2,6 +2,8 @@ package bptree
 
 func (t *Tree) Find(key uint64) (string, error) {
 	t.rwMu.RLock()
+	defer t.rwMu.RUnlock()
+
 	var (
 		node *Node
 		err  error
@@ -13,11 +15,10 @@ func (t *Tree) Find(key uint64) (string, error) {
 
 	if node, err = t.newMappingNodeFromPool(INVALID_OFFSET); err != nil {
 		return "", err
-	}	
+	}
 	if err = t.findLeaf(node, key); err != nil {
 		return "", err
 	}
-	t.rwMu.RUnlock()
 	defer t.putNodePool(node)
 
 	for i, nkey := range node.Keys {
@@ -25,10 +26,9 @@ func (t *Tree) Find(key uint64) (string, error) {
 			return node.Records[i], nil
 		}
 	}
-	t.NodeUnlock(node.Self)
+	// t.NodeUnlock(node.Self)
 	return "", NotFoundKey
 }
-
 
 /*
 

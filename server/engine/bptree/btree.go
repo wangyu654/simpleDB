@@ -26,9 +26,10 @@ type Tree struct {
 	file       *os.File
 	blockSize  uint64
 	fileSize   uint64
-	rwMu       *sync.RWMutex
-	nodeMuMap  sync.Map
-	nodeCond   *sync.Cond
+	// --------- 并发控制 ----------
+	rwMu *sync.RWMutex
+	// nodeMuMap sync.Map
+	// nodeCond  *sync.Cond
 }
 
 type Node struct {
@@ -53,8 +54,8 @@ func NewTree(filename string) (*Tree, error) {
 	t := &Tree{}
 
 	t.rwMu = &sync.RWMutex{}
-	t.nodeMuMap = sync.Map{}
-	t.nodeCond = &sync.Cond{}
+	// t.nodeMuMap = sync.Map{}
+	// t.nodeCond = sync.NewCond(&sync.RWMutex{})
 
 	t.rootOff = INVALID_OFFSET
 	t.nodePool = &sync.Pool{
@@ -108,6 +109,7 @@ func (t *Tree) restructRootNode() error {
 		if err = t.seekNode(node, OFFTYPE(off)); err != nil {
 			return err
 		}
+		// defer t.NodeUnlock(OFFTYPE(off))
 		if node.IsActive {
 			break
 		}

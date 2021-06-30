@@ -1,5 +1,7 @@
 package client
 
+import "fmt"
+
 func (ck *Clerk) Get(key string) string {
 	// 整个客户端串行
 	ck.mu.Lock()
@@ -46,6 +48,7 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 		reply := &GetReply{}
 		server := ck.servers[i]
 		err := server.Call("KVServer.PutAppend", args, reply)
+		fmt.Printf("receive server reply:%+v\n", reply)
 		if err == nil {
 			switch reply.Err {
 			case ErrWrongLeader:

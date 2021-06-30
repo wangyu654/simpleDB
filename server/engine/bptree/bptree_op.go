@@ -10,9 +10,16 @@ import (
 // 通过offset 寻找并赋值node
 func (t *Tree) seekNode(node *Node, off OFFTYPE) error {
 	// 等待
-	for !t.NodeLock(off) {
-		t.nodeCond.Wait()
-	}
+	// t.nodeCond.L.Lock()
+	// for {
+	// 	if _, ok := t.nodeMuMap.Load(off); ok {
+	// 		if ok {
+	// 			t.nodeCond.Wait()
+	// 		} else {
+	// 			break
+	// 		}
+	// 	}
+	// }
 
 	if node == nil {
 		return fmt.Errorf("cant use nil for seekNode")

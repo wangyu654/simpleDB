@@ -36,6 +36,7 @@ func (kv *KVServer) getLogFromRaft() {
 	for {
 		// 在raft层拿到log
 		raftLog := <-kv.applyCh
+		kv.printInfo("get log from raft:", raftLog)
 		command := raftLog.Command.(Command) //类型转换
 		var msg Message
 		var clientId int64

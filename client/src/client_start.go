@@ -1,12 +1,9 @@
 package client
 
 import (
-	"bufio"
 	"io/ioutil"
 	"log"
 	"net/rpc"
-	"os"
-	"strings"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -25,7 +22,7 @@ type Config struct {
 func readConfig() (*Config, error) {
 	var err error
 
-	config, err := ioutil.ReadFile("./config.yaml")
+	config, err := ioutil.ReadFile("../config.yaml")
 	if err != nil {
 		return nil, err
 	}
@@ -41,60 +38,57 @@ func getConnection(addresses []string, servers *[]*rpc.Client, finished chan boo
 	for i, address := range addresses {
 		go func(address string, ch chan *Client, i int) {
 			conn, err := rpc.DialHTTP("tcp", address)
+			log.Println("try to connect", address, i)
 			for err != nil {
-				log.Println("try to connect", address)
 				time.Sleep(time.Duration(time.Second))
+				log.Println("try to connect again", address, i)
 				conn, err = rpc.DialHTTP("tcp", address)
 			}
+			log.Println("connect sucessfully!", address, i)
 			ch <- &Client{
 				index: i,
 				conn:  conn,
 			}
 		}(address, ch, i)
 	}
-	rest := len(addresses) - 1
+	rest := len(addresses)
 	for rest > 0 {
-		select {
-		case c := <-ch:
-			log.Println("connected", c.index)
-			(*servers)[c.index] = c.conn
-			rest--
-		}
+		c := <-ch
+		(*servers)[c.index] = c.conn
+		rest--
 	}
 	finished <- true
 }
 
-func Start(addresses []string) {
+func Start(addresses []string) *Clerk {
 	var (
-		err error
-		ck  *Clerk
-		in  string
+		// err error
+		ck *Clerk
+		// in  string
 	)
 	servers := make([]*rpc.Client, len(addresses))
-	ch := make(chan bool)
-	go getConnection(addresses, &servers, ch)
-	select {
-	case <-ch:
-		ck = MakeClerk(servers)
-	}
-	
-	reader := bufio.NewReader(os.Stdin)
-	writer := bufio.NewWriter(os.Stdout)
-
-	for {
-		in, err = reader.ReadString('\n')
-		if err != nil {
-			writer.Write([]byte("please type again"))
-			continue
-		}
-		args := strings.Split(in, " ")
-		if len(args) == 2 && args[0] == "get" {
-			ck.Get(args[1])
-		} else if len(args) == 3 && args[0] == "put" {
-			ck.PutAppend(args[1], args[2], "put")
-		} else {
-			writer.Write([]byte("please type again"))
-			continue
-		}
-	}
+	finished := make(chan bool)
+	go getConnection(addresses, &servers, finished)
+	<-finished
+	ck = MakeClerk(servers)
+	return ck
+	// reader := bufio.NewReader(os.Stdin)
+	// writer := bufio.NewWriter(os.Stdout)
+	// for {
+	// 	writer.Write([]byte("please type again"))
+	// 	in, err = reader.ReadString('\n')
+	// 	if err != nil {
+	// 		writer.Write([]byte("please type again"))
+	// 		continue
+	// 	}
+	// 	args := strings.Split(in, " ")
+	// 	if len(args) == 2 && args[0] == "get" {
+	// 		writer.Write([]byte(ck.Get(args[1])))
+	// 	} else if len(args) == 3 && args[0] == "put" {
+	// 		ck.PutAppend(args[1], args[2], "put")
+	// 	} else {
+	// 		writer.Write([]byte("please type again"))
+	// 		continue
+	// 	}
+	// }
 }

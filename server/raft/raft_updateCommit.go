@@ -57,7 +57,7 @@ func (leader *Raft) updateLeaderCommit() {
 	}
 	leader.commitIndex = newIndex
 	for i := oldIndex + 1; i <= newIndex; i++ {
-		leader.printInfo("leader commit log:", leader.log[i].Command)
+		// leader.printInfo("leader commit log:", leader.log[i].Command)
 		leader.chanCommitted <- ApplyMsg{
 			CommandIndex: i,
 			Command:      leader.log[i].Command,

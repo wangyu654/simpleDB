@@ -1,8 +1,8 @@
 package main
 
 import (
+	client "client/src"
 	"io/ioutil"
-	client "simpleDB/client/src"
 
 	"gopkg.in/yaml.v2"
 )

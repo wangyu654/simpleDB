@@ -7,19 +7,19 @@ func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) error
 	defer rf.mu.Unlock()
 	defer rf.persist()
 
-	rf.printInfo("receive requestVote from", args.CandidateId)
+	// rf.printInfo("receive requestVote from", args.CandidateId)
 
 	reply.VoteGranted = false
 	reply.Term = rf.currentTerm
 
 	if rf.currentTerm > args.Term {
-		rf.printInfo("reject", args.CandidateId, ",term is older,", args.Term, "vs", rf.currentTerm)
+		// rf.printInfo("reject", args.CandidateId, ",term is older,", args.Term, "vs", rf.currentTerm)
 		return nil
 	}
 	if rf.currentTerm == args.Term {
 		if rf.votedFor != -1 && rf.votedFor != args.CandidateId {
 			// 本轮已经投票
-			rf.printInfo("reject ", args.CandidateId, "has voted")
+			// rf.printInfo("reject ", args.CandidateId, "has voted")
 			return nil
 		}
 	}
@@ -30,12 +30,12 @@ func (rf *Raft) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) error
 		rf.toFollower(args.CandidateId) //变为follwer
 		if rf.log[len(rf.log)-1].Term > args.LastLogTerm || (rf.log[len(rf.log)-1].Term == args.LastLogTerm && rf.log[len(rf.log)-1].Index > args.LastLogIndex) {
 			// 候选人的log更旧
-			rf.printInfo("reject", args.CandidateId, ",log is older")
+			// rf.printInfo("reject", args.CandidateId, ",log is older")
 			return nil
 		}
 	}
 
-	rf.printInfo("support", args.CandidateId)
+	// rf.printInfo("support", args.CandidateId)
 	rf.vote(args, reply)
 	return nil
 }
@@ -49,7 +49,7 @@ func (rf *Raft) AppendEntries(args AppendEntriesArgs, reply *AppendEntriesReply)
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 	defer rf.persist()
-	rf.printInfo("receive heartbeat")
+	rf.printInfo("receive heartbeat", args.Entry)
 	if args.Term < rf.currentTerm {
 		// rf.printInfo("reject hearbeat from leader, leader:", args.Term, "vs local:", rf.currentTerm)
 		reply.Success = false

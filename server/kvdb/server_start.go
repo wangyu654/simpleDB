@@ -1,14 +1,21 @@
 package kvdb
 
 import (
+	"encoding/gob"
 	"log"
 	"net/http"
 	"net/rpc"
+	"strconv"
 	"time"
 
 	"simpleDB/server/engine/bptree"
 	"simpleDB/server/raft"
 )
+
+type Client struct {
+	index int
+	conn  *rpc.Client
+}
 
 func StartKVServer(servers []*rpc.Client, me int, persister *raft.Persister, maxraftstate int, address string, ch chan bool) {
 
@@ -21,22 +28,30 @@ func StartKVServer(servers []*rpc.Client, me int, persister *raft.Persister, max
 	}
 	kv := new(KVServer)
 	rpc.Register(kv)
+	gob.Register(Command{})
+	gob.Register(GetArgs{})
+	gob.Register(GetReply{})
+	gob.Register(PutAppendArgs{})
+	gob.Register(PutAppendReply{})
+
 	kv.me = me
 	kv.maxraftstate = maxraftstate
 
 	kv.applyCh = make(chan raft.ApplyMsg)
 	kv.ack = map[int64]int{}
-	kv.database = &bptree.Tree{}
+	engine, err := bptree.NewTree("db-%i" + strconv.Itoa(me))
+	if err != nil {
+		panic(err)
+	}
+	kv.database = engine
 	kv.messages = map[int]chan Message{}
 
 	go func() {
 		log.Println("waiting for raft prepared")
-		select {
-		case <-ch:
-			kv.rf = raft.Make(servers, me, persister, kv.applyCh)
-			log.Println("raft prepared")
-			go kv.getLogFromRaft()
-		}
+		<-ch
+		kv.rf = raft.Make(servers, me, persister, kv.applyCh)
+		log.Println("raft prepared")
+		kv.getLogFromRaft()
 	}()
 
 	rpc.HandleHTTP()
@@ -45,11 +60,6 @@ func StartKVServer(servers []*rpc.Client, me int, persister *raft.Persister, max
 		log.Panicln(err)
 	}
 
-}
-
-type Client struct {
-	index int
-	conn  *rpc.Client
 }
 
 func getConnection(addresses []string, index int, servers *[]*rpc.Client, finished chan bool) {
@@ -71,14 +81,11 @@ func getConnection(addresses []string, index int, servers *[]*rpc.Client, finish
 			}
 		}(address, ch, i)
 	}
-	rest := len(addresses) - 1
-	for rest > 0 {
-		select {
-		case c := <-ch:
-			log.Println("connected", c.index)
-			(*servers)[c.index] = c.conn
-			rest--
-		}
+	rest := len(addresses)
+	for i := 0; i < rest; i++ {
+		c := <-ch
+		(*servers)[c.index] = c.conn
+		rest--
 	}
 	finished <- true
 }

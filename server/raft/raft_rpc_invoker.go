@@ -64,7 +64,6 @@ func (leader *Raft) doAppendEntries(server int) {
 			args.Entry = leader.log[leader.nextIndex[server]-leader.log[0].Index:]
 		}
 	}
-	leader.printInfo("send heartbeat to", server, "logs:", args.Entry)
 	if len(leader.log) == 1 {
 		args.LeaderIsEmpty = true
 	}
@@ -99,7 +98,8 @@ func (rf *Raft) sendAppendEntries(server int, args AppendEntriesArgs, reply *App
 	var ret bool
 	c := make(chan bool)
 	go func() {
-		rf.printInfo("send heartbeat to ", server)
+		// fmt.Printf("%+v\n", rf.peers[server])
+		rf.printInfo("send heartbeat to", server, ",logs:", args.Entry)
 		err := rf.peers[server].Call("Raft.AppendEntries", args, reply)
 		if err == nil {
 			c <- true
@@ -109,9 +109,9 @@ func (rf *Raft) sendAppendEntries(server int, args AppendEntriesArgs, reply *App
 	}()
 	select {
 	case ret = <-c:
-		// case <-time.After(RaftHeartbeatPeriod):
-		// 	rf.printInfo("send heartbeat failed to ", server, "because of net")
-		// 	ret = false
+	case <-time.After(RaftHeartbeatPeriod):
+		// rf.printInfo("send heartbeat failed to ", server, "because of net")
+		ret = false
 	}
 	return ret
 }
@@ -138,7 +138,7 @@ func (candidate *Raft) DoElection() {
 			// candidate.printInfo("request vote to", index)
 			if candidate.sendRequestVote(index, args, reply) {
 				//接收到了消息
-				fmt.Printf("receive requestVote reply:+%v", reply)
+				fmt.Printf("receive requestVote reply:+%v\n", reply)
 				if reply.VoteGranted {
 					chanGather <- true
 				} else {
@@ -180,7 +180,6 @@ func (candidate *Raft) handleElectionRes(chanGather chan bool) {
 				candidate.mu.Lock()
 				candidate.toLeader()
 				candidate.persist()
-				candidate.printInfo("vote count:", yes)
 				candidate.mu.Unlock()
 				isLoop = false
 			}
@@ -189,6 +188,7 @@ func (candidate *Raft) handleElectionRes(chanGather chan bool) {
 			}
 		}
 	}
+	candidate.printInfo("vote count:", yes)
 }
 
 func (rf *Raft) sendRequestVote(server int, args RequestVoteArgs, reply *RequestVoteReply) bool {
@@ -205,10 +205,10 @@ func (rf *Raft) sendRequestVote(server int, args RequestVoteArgs, reply *Request
 	}()
 	select {
 	case ret = <-c:
-		// case <-time.After(RaftHeartbeatPeriod):
-		// 	//未接收消息
-		// 	rf.printInfo("send reqeustVote failed to ", server, "because of net")
-		// 	ret = false
+	case <-time.After(RaftHeartbeatPeriod):
+		//未接收消息
+		// rf.printInfo("send reqeustVote failed to ", server, "because of net")
+		ret = false
 	}
 	return ret
 }
