@@ -22,10 +22,7 @@ func (rf *Raft) toFollower(votedID int) {
 	rf.role = Follower
 	rf.votedFor = -1
 	rf.leaderId = votedID
-	// fmt.Println("111111111111111111111111111",rf.chanRole,rf)
 	rf.chanRole <- Follower
-	// fmt.Println("000000000000000000000000000")
-	// rf.printInfo(rf.me, "becoming Follower")
 }
 
 func (rf *Raft) toLeader() {

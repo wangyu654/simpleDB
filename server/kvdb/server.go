@@ -81,11 +81,9 @@ func (kv *KVServer) apply(command Command, isDuplicated bool) interface{} {
 
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-	// fmt.Println("command:", command)
 	switch command.OpType {
 	case "Get":
 		args := command.Args.(GetArgs)
-		// kv.printInfo("get", args.Key)
 		reply := GetReply{}
 		if key, err = strconv.ParseUint(args.Key, 10, 64); err != nil {
 			reply.Err = ErrNoKey

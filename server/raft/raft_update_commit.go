@@ -1,7 +1,6 @@
 package raft
 
 func (rf *Raft) updateFollowerCommit(leaderCommit int, lastIndex int) {
-	// rf.printInfo("leader commitIndex:", leaderCommit, ",local lastIndex", lastIndex)
 	oldVal := rf.commitIndex
 	if leaderCommit > rf.commitIndex {
 		if leaderCommit < lastIndex {
@@ -14,8 +13,6 @@ func (rf *Raft) updateFollowerCommit(leaderCommit int, lastIndex int) {
 	}
 	baseIndex := rf.log[0].Index
 	for oldVal++; oldVal <= rf.commitIndex; oldVal++ {
-		//DPrintf("[%d] follower apply: [%d] [%d]", rf.me, oldVal, rf.logTable[oldVal-baseIndex].Command)
-		// rf.printInfo("follower commit log:", rf.log[oldVal].Command)
 		rf.chanCommitted <- ApplyMsg{
 			CommandIndex: oldVal,
 			Command:      rf.log[oldVal-baseIndex].Command,
@@ -33,21 +30,19 @@ func (leader *Raft) updateLeaderCommit() {
 	// update commitIndex
 	oldIndex := leader.commitIndex
 	newIndex := oldIndex
-	// fmt.Println("oldIndex ", oldIndex, "newIndex ", newIndex, "len log", len(leader.log))
 	for i := len(leader.log) - 1; leader.log[i].Index > oldIndex && leader.log[i].Term == leader.currentTerm; i-- {
 		countServer := 1
 		for server := range leader.peers {
 			if server == leader.me {
 				continue
 			}
-			// leader.printInfo("log index", i, ",peer", server, leader.matchIndex[server])
 			if leader.matchIndex[server] >= i {
 				countServer++
 			}
 		}
-		// leader.printInfo("try commite count of log:", leader.log[i], ",received server count:", countServer)
 		if countServer*2 >= len(leader.peers) {
 			leader.printInfo("commited  log:", leader.log[i], ",received server count:", countServer)
+			// 提前截断
 			newIndex = i
 			break
 		}
@@ -57,7 +52,6 @@ func (leader *Raft) updateLeaderCommit() {
 	}
 	leader.commitIndex = newIndex
 	for i := oldIndex + 1; i <= newIndex; i++ {
-		// leader.printInfo("leader commit log:", leader.log[i].Command)
 		leader.chanCommitted <- ApplyMsg{
 			CommandIndex: i,
 			Command:      leader.log[i].Command,

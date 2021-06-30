@@ -1,7 +1,6 @@
 package raft
 
 import (
-	"fmt"
 	"log"
 	"time"
 )
@@ -138,7 +137,6 @@ func (candidate *Raft) DoElection() {
 			// candidate.printInfo("request vote to", index)
 			if candidate.sendRequestVote(index, args, reply) {
 				//接收到了消息
-				fmt.Printf("receive requestVote reply:+%v\n", reply)
 				if reply.VoteGranted {
 					chanGather <- true
 				} else {

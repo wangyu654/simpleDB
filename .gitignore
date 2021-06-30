@@ -11,7 +11,7 @@ output/
 
 # Test binary, built with `go test -c`
 *.test
-*-%i*
+*.wy
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
