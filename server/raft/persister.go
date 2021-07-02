@@ -11,12 +11,14 @@ package raft
 
 import (
 	"io/ioutil"
+	"strconv"
 	"sync"
 )
 
-const raftInfo = "raftInfo.txt"
+const raftInfo = "raftInfo"
 
 type Persister struct {
+	me        int
 	mu        sync.Mutex
 	raftstate []byte
 	snapshot  []byte
@@ -38,19 +40,18 @@ func (ps *Persister) Copy() *Persister {
 func (ps *Persister) SaveRaftState(state []byte) {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
-	ioutil.WriteFile(raftInfo, state, 0777)
-	// ps.raftstate = state
+	ioutil.WriteFile(raftInfo+"."+strconv.Itoa(ps.me), state, 0777)
 }
 
-func (ps *Persister) ReadRaftState() []byte {
+func (ps *Persister) ReadRaftState(index int) []byte {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
-	bs, err := ioutil.ReadFile(raftInfo)
+	ps.me = index
+	bs, err := ioutil.ReadFile(raftInfo + "." + strconv.Itoa(index))
 	if err != nil {
-		panic(err)
+		return nil
 	}
 	return bs
-	// return ps.raftstate
 }
 
 func (ps *Persister) RaftStateSize() int {

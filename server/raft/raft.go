@@ -61,9 +61,6 @@ func (rf *Raft) readPersist(data []byte) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 	if data == nil || len(data) < 1 { // bootstrap without any state?
-		rf.currentTerm = 0
-		rf.votedFor = -1
-		rf.log = append(rf.log, LogEntry{Term: 0, Index: 0})
 		return
 	}
 
@@ -143,7 +140,7 @@ func Make(peers []*rpc.Client, me int,
 
 	rf.chanRole = make(chan Role)
 
-	rf.readPersist(persister.ReadRaftState())
+	rf.readPersist(persister.ReadRaftState(me))
 
 	go rf.ChangeRole()
 	go rf.startElectTimer()

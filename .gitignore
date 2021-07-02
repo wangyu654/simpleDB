@@ -12,6 +12,7 @@ output/
 # Test binary, built with `go test -c`
 *.test
 *.wy
+raftInfo*
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
