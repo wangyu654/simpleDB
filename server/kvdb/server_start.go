@@ -17,7 +17,7 @@ type Client struct {
 	conn  *rpc.Client
 }
 
-func StartKVServer(servers []*rpc.Client, me int, persister *raft.Persister, maxraftstate int, address string, ch chan bool) {
+func StartKVServer(servers []*rpc.Client, me int, persister *raft.Persister, maxraftstate int, address string, ch chan bool, addresses []string) {
 
 	var err error
 	if err != nil {
@@ -46,10 +46,11 @@ func StartKVServer(servers []*rpc.Client, me int, persister *raft.Persister, max
 	kv.database = engine
 	kv.messages = map[int]chan Message{}
 
+	// make raft
 	go func() {
 		log.Println("waiting for raft prepared")
 		<-ch
-		kv.rf = raft.Make(servers, me, persister, kv.applyCh)
+		kv.rf = raft.Make(servers, me, persister, kv.applyCh, addresses)
 		log.Println("raft prepared")
 		kv.getLogFromRaft()
 	}()
@@ -94,5 +95,5 @@ func Start(addresses []string, index int) {
 	servers := make([]*rpc.Client, len(addresses))
 	ch := make(chan bool)
 	go getConnection(addresses, index, &servers, ch)
-	StartKVServer(servers, index, raft.MakePersister(), -1, addresses[index], ch)
+	StartKVServer(servers, index, raft.MakePersister(), -1, addresses[index], ch, addresses)
 }

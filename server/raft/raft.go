@@ -14,9 +14,11 @@ import (
 type Raft struct {
 	mu        sync.Mutex    // Lock to protect shared access to this peer's state
 	peers     []*rpc.Client // RPC end points of all peers
-	persister *Persister    // Object to hold this peer's persisted state
-	me        int           // this peer's index into peers[]
-	dead      int32         // set by Kill()
+	loseConn  []bool        // the connection state of client
+	addresses []string
+	persister *Persister // Object to hold this peer's persisted state
+	me        int        // this peer's index into peers[]
+	dead      int32      // set by Kill()
 
 	log []LogEntry
 
@@ -109,10 +111,12 @@ func (rf *Raft) killed() bool {
 }
 
 func Make(peers []*rpc.Client, me int,
-	persister *Persister, applyCh chan ApplyMsg) *Raft {
+	persister *Persister, applyCh chan ApplyMsg, addresses []string) *Raft {
 	rf := new(Raft)
 	rpc.Register(rf)
 	rf.peers = peers
+	rf.loseConn = make([]bool, len(peers))
+	rf.addresses = addresses
 	rf.persister = persister
 	rf.me = me
 
@@ -144,6 +148,8 @@ func Make(peers []*rpc.Client, me int,
 
 	go rf.ChangeRole()
 	go rf.startElectTimer()
+	go rf.Sysmon()
+
 	log.Println("raft", rf.me, "start")
 	return rf
 }

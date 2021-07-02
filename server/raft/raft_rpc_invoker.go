@@ -141,7 +141,7 @@ func (candidate *Raft) DoElection() {
 					chanGather <- true
 				} else {
 					candidate.mu.Lock()
-					candidate.printInfo(index, "reject me")
+					// candidate.printInfo(index, "reject me")
 					if candidate.currentTerm < reply.Term {
 						candidate.currentTerm = reply.Term
 					}
