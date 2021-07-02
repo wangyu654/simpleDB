@@ -6,12 +6,14 @@ import (
 	"log"
 	"math/rand"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
 	"gopkg.in/yaml.v2"
 )
 
+// 并发测试 PASS
 func TestPut(t *testing.T) {
 
 	var err error
@@ -27,24 +29,36 @@ func TestPut(t *testing.T) {
 
 	rand.Seed(time.Now().Unix())
 
-	m := map[int]int{}
-	for i := 0; i < 20; i++ {
-		n := rand.Intn(999)
-		k := strconv.Itoa(n)
-		v := strconv.Itoa(n)
-		ck.Put(k, v)
-		m[n] = n
-		log.Println("key:", k, "value:", v)
+	m := sync.Map{}
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func() {
+			for i := 0; i < 10; i++ {
+				n := rand.Intn(999)
+				k := strconv.Itoa(n)
+				v := strconv.Itoa(n)
+				ck.Put(k, v)
+				m.Store(k, v)
+				log.Println("key:", k, "value:", v)
+			}
+			wg.Done()
+		}()
 	}
+	wg.Wait()
 	log.Println("put finished")
-	for k, value := range m {
-		expected := strconv.Itoa(value)
-		if v := ck.Get(strconv.Itoa(k)); v != expected {
+	m.Range(func(key, value interface{}) bool {
+		expected := value.(string)
+		k := key.(string)
+		if v := ck.Get(k); v != expected {
 			t.Error("error: expect: ", k, "but get:", v)
 		} else {
 			log.Println("expect:", k, "get:", v)
 		}
-	}
+		return true
+	})
+
 }
 
 func TestGet(t *testing.T) {
