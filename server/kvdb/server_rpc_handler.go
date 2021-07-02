@@ -59,11 +59,15 @@ func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 		kv.messages[index] = make(chan Message, 1)
 	}
 	chanMsg := kv.messages[index]
+	defer func() {
+		delete(kv.messages, index)
+		close(chanMsg)
+	}()
 	kv.mu.Unlock()
 
 	select {
 	case msg := <-chanMsg:
-		kv.printInfo("receive cmd:", msg)
+		// kv.printInfo("receive cmd:", msg)
 		if recArgs, ok := msg.args.(PutAppendArgs); !ok {
 			return nil
 		} else {

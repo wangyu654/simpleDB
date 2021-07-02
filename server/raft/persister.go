@@ -9,7 +9,12 @@ package raft
 // test with the original before submitting.
 //
 
-import "sync"
+import (
+	"io/ioutil"
+	"sync"
+)
+
+const raftInfo = "raftInfo.txt"
 
 type Persister struct {
 	mu        sync.Mutex
@@ -33,13 +38,19 @@ func (ps *Persister) Copy() *Persister {
 func (ps *Persister) SaveRaftState(state []byte) {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
-	ps.raftstate = state
+	ioutil.WriteFile(raftInfo, state, 0777)
+	// ps.raftstate = state
 }
 
 func (ps *Persister) ReadRaftState() []byte {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
-	return ps.raftstate
+	bs, err := ioutil.ReadFile(raftInfo)
+	if err != nil {
+		panic(err)
+	}
+	return bs
+	// return ps.raftstate
 }
 
 func (ps *Persister) RaftStateSize() int {
