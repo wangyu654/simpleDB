@@ -54,6 +54,7 @@ func (t *Tree) deleteKeyFromLeaf(key uint64) error {
 		return t.flushNodesAndPutNodesPool(leaf)
 	}
 
+	// lease leaf
 	if leaf.Next != INVALID_OFFSET {
 		if nextLeaf, err = t.newMappingNodeFromPool(leaf.Next); err != nil {
 			return err

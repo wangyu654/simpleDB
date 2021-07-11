@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"fmt"
 	"net/rpc"
 	"time"
 
@@ -13,10 +14,14 @@ func (rf *Raft) Sysmon() {
 
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-
+	fmt.Println(rf.peers)
 	for i := range rf.peers {
+		if i == rf.me {
+			continue
+		}
 		server := rf.peers[i]
-		if !rf.loseConn[i] && server.Close().Error() != "" {
+		// fmt.Println(server.Close().Error())
+		if !rf.loseConn[i] && server == nil {
 			rf.loseConn[i] = true
 			go rf.retry(i)
 		}

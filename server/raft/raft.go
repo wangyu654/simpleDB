@@ -148,7 +148,7 @@ func Make(peers []*rpc.Client, me int,
 
 	go rf.ChangeRole()
 	go rf.startElectTimer()
-	go rf.Sysmon()
+	// go rf.Sysmon()
 
 	log.Println("raft", rf.me, "start")
 	return rf

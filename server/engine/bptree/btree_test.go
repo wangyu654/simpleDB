@@ -2,7 +2,12 @@ package bptree
 
 import (
 	"fmt"
+	"log"
+	"math/rand"
+	"strconv"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestInsert(t *testing.T) {
@@ -17,6 +22,64 @@ func TestInsert(t *testing.T) {
 	tree.Insert(12, "cl")
 }
 
+func BenchmarkGet(b *testing.B) {
+
+}
+
+func BenchmarkPut(b *testing.B) {
+	b.StopTimer()
+
+	var (
+		tree *Tree
+		err  error
+	)
+
+	rand.Seed(time.Now().Unix())
+	if tree, err = NewTree("./data.wy"); err != nil {
+		b.Fatal(err)
+	}
+
+	m := sync.Map{}
+	wg := sync.WaitGroup{}
+	b.StartTimer()
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			for i := 0; i < 100000; i++ {
+				n := rand.Intn(999999)
+				k := uint64(n)
+				v := strconv.Itoa(n)
+				err = tree.Insert(k, v)
+				if err != nil {
+					m.Store(k, v)
+					log.Println("key:", k, "value:", v)
+				}
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	b.StopTimer()
+
+	log.Println("put finished")
+	// m.Range(func(key, value interface{}) bool {
+	// 	expected := value.(string)
+	// 	k := key.(uint64)
+	// 	if v, err := tree.Find(k); err != nil || v != expected {
+	// 		if err != nil {
+	// 			log.Fatal(err)
+	// 		} else {
+	// 			b.Error("error: expect: ", k, "but get:", v)
+	// 			log.Println("expect:", k, "but get:", v)
+	// 		}
+	// 	} else {
+	// 		log.Println("expect:", k, "get:", v)
+	// 	}
+	// 	return true
+	// })
+
+}
+
 func TestGet(t *testing.T) {
 	var (
 		tree *Tree
@@ -27,87 +90,4 @@ func TestGet(t *testing.T) {
 	}
 	fmt.Println(tree.Find(12))
 
-}
-
-func TestBptree(t *testing.T) {
-	var (
-		tree *Tree
-		err  error
-	)
-	if tree, err = NewTree("./data.wy"); err != nil {
-		t.Fatal(err)
-	}
-
-	// insert
-	for i := 0; i < 20; i++ {
-		val := fmt.Sprintf("%d", i)
-		if err = tree.Insert(uint64(i), val); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	// insert same key repeatedly
-	for i := 0; i < 20; i++ {
-		val := fmt.Sprintf("%d", i)
-		if err = tree.Insert(uint64(i), val); err != HasExistedKeyError {
-			t.Fatal(err)
-		}
-	}
-
-	// find key
-	for i := 0; i < 20; i++ {
-		oval := fmt.Sprintf("%d", i)
-		if val, err := tree.Find(uint64(i)); err != nil {
-			t.Fatal(err)
-		} else {
-			if oval != val {
-				t.Fatal(fmt.Sprintf("not equal key:%d oval:%s, found val:%s", i, oval, val))
-			}
-		}
-	}
-
-	// first print
-	tree.ScanTreePrint()
-
-	// delete two keys
-	if err := tree.Delete(0); err != nil {
-		t.Fatal(err)
-	}
-	if err := tree.Delete(2); err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err := tree.Find(2); err != NotFoundKey {
-		t.Fatal(err)
-	}
-
-	// close tree
-	tree.Close()
-
-	//repoen tree
-	if tree, err = NewTree("./data.wy"); err != nil {
-		t.Fatal(err)
-	}
-	// defer os.Remove("./data.db")
-	defer tree.Close()
-
-	// find
-	if _, err := tree.Find(2); err != NotFoundKey {
-		t.Fatal(err)
-	}
-
-	// update {key: 18, val : "19"}
-	if err := tree.Update(18, "19"); err != nil {
-		t.Fatal(err)
-	}
-
-	// find {key: 18, val : "19"}
-	if val, err := tree.Find(18); err != nil {
-		t.Fatal(err)
-	} else if "19" != val {
-		t.Fatal(fmt.Errorf("Expect %s, but get %s", "19", val))
-	}
-
-	// second print
-	tree.ScanTreePrint()
 }
